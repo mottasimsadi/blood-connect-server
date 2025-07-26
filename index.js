@@ -59,6 +59,18 @@ async function run() {
     const bloodCollection = client.db("bloodDB").collection("bloodConnect");
     const userCollection = client.db("bloodDB").collection("users");
 
+    const verifyAdmin = async (req, res, next) => {
+      const user = await userCollection.findOne({
+        email: req.firebaseUser.email,
+      });
+
+      if (user.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ msg: "unauthorized" });
+      }
+    };
+
     app.post("/add-user", async (req, res) => {
       const userData = req.body;
 
@@ -98,9 +110,6 @@ async function run() {
         res.send(users);
       }
     );
-
-
-    
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
