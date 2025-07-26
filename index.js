@@ -87,6 +87,18 @@ async function run() {
       res.send({ msg: "ok", role: user.role, status: "active" });
     });
 
+    app.get(
+      "/get-users",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const users = await userCollection
+          .find({ email: { $ne: req.firebaseUser.email } })
+          .toArray();
+        res.send(users);
+      }
+    );
+
 
     
 
