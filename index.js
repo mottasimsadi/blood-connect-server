@@ -56,9 +56,29 @@ async function run() {
     // Connect the client to the server
     await client.connect();
 
-    const foodCollection = client.db("bloodDB").collection("bloodConnect");
+    const bloodCollection = client.db("bloodDB").collection("bloodConnect");
+    const userCollection = client.db("bloodDB").collection("users");
 
+    app.post("/add-user", async (req, res) => {
+      const userData = req.body;
 
+      const find_result = await userCollection.findOne({
+        email: userData.email,
+      });
+
+      if (find_result) {
+        userCollection.updateOne(
+          { email: userData.email },
+          {
+            $inc: { loginCount: 1 },
+          }
+        );
+        res.send({ msg: "user already exist" });
+      } else {
+        const result = await userCollection.insertOne(userData);
+        res.send(result);
+      }
+    });
 
 
     
