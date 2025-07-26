@@ -111,6 +111,25 @@ async function run() {
       }
     );
 
+    app.patch(
+      "/update-role",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        const { email, role } = req.body;
+        const result = await userCollection.updateOne(
+          { email: email },
+          {
+            $set: { role },
+          }
+        );
+
+        res.send(result);
+      }
+    );
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
