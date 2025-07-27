@@ -154,11 +154,9 @@ async function run() {
           email: req.firebaseUser.email,
         });
         if (requester?.role !== "admin") {
-          return res
-            .status(403)
-            .send({
-              message: "Forbidden: You can only access your own profile.",
-            });
+          return res.status(403).send({
+            message: "Forbidden: You can only access your own profile.",
+          });
         }
       }
 
@@ -167,6 +165,27 @@ async function run() {
         return res.status(404).send({ message: "User not found" });
       }
       res.send(user);
+    });
+
+    // PATCH (update) a user's profile
+    app.patch("/users/:email", verifyFirebaseToken, async (req, res) => {
+      const requestedEmail = req.params.email;
+      if (req.firebaseUser.email !== requestedEmail) {
+        return res
+          .status(403)
+          .send({
+            message: "Forbidden: You can only update your own profile.",
+          });
+      }
+
+      const updatedData = req.body;
+
+      const result = await userCollection.updateOne(
+        { email: requestedEmail },
+        { $set: updatedData }
+      );
+
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
