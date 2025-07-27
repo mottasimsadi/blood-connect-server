@@ -73,22 +73,38 @@ async function run() {
 
     app.post("/add-user", async (req, res) => {
       const userData = req.body;
+      const userEmail = userData.email;
 
-      const find_result = await userCollection.findOne({
-        email: userData.email,
-      });
+      // Don't try to save an empty user
+      if (!userEmail) {
+        return res.status(400).send({ msg: "Email is required." });
+      }
 
-      if (find_result) {
-        userCollection.updateOne(
-          { email: userData.email },
-          {
-            $inc: { loginCount: 1 },
-          }
-        );
-        res.send({ msg: "user already exist" });
-      } else {
-        const result = await userCollection.insertOne(userData);
-        res.send(result);
+      try {
+        const existingUser = await userCollection.findOne({ email: userEmail });
+
+        if (existingUser) {
+          const { email, ...dataToUpdate } = userData; // Exclude email from the $set payload
+
+          const result = await userCollection.updateOne(
+            { email: userEmail },
+            {
+              $set: dataToUpdate, // Set all new data from the request
+              $inc: { loginCount: 1 }, // Always increment login count
+            }
+          );
+          res.send({ msg: "User updated", result });
+        } else {
+          // User does not exist, create a new document
+          const result = await userCollection.insertOne({
+            ...userData,
+            loginCount: 1, // Ensure loginCount is set for new users
+          });
+          res.send({ msg: "User created", result });
+        }
+      } catch (error) {
+        console.error("Error in /add-user:", error);
+        res.status(500).send({ msg: "Internal server error" });
       }
     });
 
@@ -127,8 +143,6 @@ async function run() {
         res.send(result);
       }
     );
-
-
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
