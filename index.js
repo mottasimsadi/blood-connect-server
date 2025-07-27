@@ -144,6 +144,31 @@ async function run() {
       }
     );
 
+    // GET a single user's full profile by email
+    app.get("/users/:email", verifyFirebaseToken, async (req, res) => {
+      // Ensure a user can only request their own data, unless they are an admin
+      const requestedEmail = req.params.email;
+      if (req.firebaseUser.email !== requestedEmail) {
+        // Optional: Check if the requester is an admin to allow them access
+        const requester = await userCollection.findOne({
+          email: req.firebaseUser.email,
+        });
+        if (requester?.role !== "admin") {
+          return res
+            .status(403)
+            .send({
+              message: "Forbidden: You can only access your own profile.",
+            });
+        }
+      }
+
+      const user = await userCollection.findOne({ email: requestedEmail });
+      if (!user) {
+        return res.status(404).send({ message: "User not found" });
+      }
+      res.send(user);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
