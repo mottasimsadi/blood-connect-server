@@ -73,38 +73,53 @@ async function run() {
 
     app.post("/add-user", async (req, res) => {
       const userData = req.body;
-      const userEmail = userData.email;
 
-      // Don't try to save an empty user
-      if (!userEmail) {
-        return res.status(400).send({ msg: "Email is required." });
+      if (!userData || !userData.email) {
+        return res.status(400).json({ message: "Invalid user data provided." });
       }
 
       try {
-        const existingUser = await userCollection.findOne({ email: userEmail });
+        const find_result = await userCollection.findOne({
+          email: userData.email,
+        });
 
-        if (existingUser) {
-          const { email, ...dataToUpdate } = userData; // Exclude email from the $set payload
+        if (find_result) {
+          const dataToUpdate = {};
+          if (userData.name) dataToUpdate.name = userData.name;
+          if (userData.photoURL) dataToUpdate.photoURL = userData.photoURL;
 
-          const result = await userCollection.updateOne(
-            { email: userEmail },
-            {
-              $set: dataToUpdate, // Set all new data from the request
-              $inc: { loginCount: 1 }, // Always increment login count
-            }
-          );
-          res.send({ msg: "User updated", result });
+          if (Object.keys(dataToUpdate).length > 0) {
+            await userCollection.updateOne(
+              { email: userData.email },
+              {
+                $set: dataToUpdate,
+                $inc: { loginCount: 1 },
+              }
+            );
+          } else {
+            // If no new data, just increment the login count
+            await userCollection.updateOne(
+              { email: userData.email },
+              { $inc: { loginCount: 1 } }
+            );
+          }
+
+          res.send({ msg: "User already exists and was updated." });
         } else {
-          // User does not exist, create a new document
-          const result = await userCollection.insertOne({
+          // New user, insert the full document
+          const newUser = {
             ...userData,
-            loginCount: 1, // Ensure loginCount is set for new users
-          });
-          res.send({ msg: "User created", result });
+            status: "active",
+            loginCount: 1,
+          };
+          const result = await userCollection.insertOne(newUser);
+          res.send(result);
         }
       } catch (error) {
-        console.error("Error in /add-user:", error);
-        res.status(500).send({ msg: "Internal server error" });
+        console.error("ERROR in /add-user endpoint:", error);
+        res.status(500).json({
+          message: "An error occurred on the server while processing the user.",
+        });
       }
     });
 
@@ -171,11 +186,9 @@ async function run() {
     app.patch("/users/:email", verifyFirebaseToken, async (req, res) => {
       const requestedEmail = req.params.email;
       if (req.firebaseUser.email !== requestedEmail) {
-        return res
-          .status(403)
-          .send({
-            message: "Forbidden: You can only update your own profile.",
-          });
+        return res.status(403).send({
+          message: "Forbidden: You can only update your own profile.",
+        });
       }
 
       const updatedData = req.body;
