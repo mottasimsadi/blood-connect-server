@@ -74,6 +74,8 @@ async function run() {
       }
     };
 
+    // User Management Routes
+
     app.post("/add-user", async (req, res) => {
       const userData = req.body;
 
@@ -202,6 +204,30 @@ async function run() {
       );
 
       res.send(result);
+    });
+
+    // Dontaion Request Routes
+
+    // POST to create a donation request
+    app.post("/donation-requests", verifyFirebaseToken, async (req, res) => {
+      try {
+        const user = await userCollection.findOne({
+          email: req.firebaseUser.email,
+        });
+        if (user?.status === "blocked") {
+          return res.status(403).send({
+            message:
+              "Access Denied: Blocked users cannot create donation requests.",
+          });
+        }
+
+        const newRequest = req.body;
+        const result = await donationRequestCollection.insertOne(newRequest);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating donation request:", error);
+        res.status(500).send({ message: "Failed to create donation request." });
+      }
     });
 
     // Get the current donor's donation requests with filtering and optional limit
