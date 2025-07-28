@@ -150,6 +150,29 @@ async function run() {
       }
     );
 
+    // PATCH to update a user's role
+    app.patch(
+      "/users/role/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { role } = req.body;
+          if (!role || !["donor", "volunteer", "admin"].includes(role)) {
+            return res.status(400).send({ message: "Invalid role provided." });
+          }
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = { $set: { role: role } };
+          const result = await userCollection.updateOne(query, updateDoc);
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating user role:", error);
+          res.status(500).send({ message: "Failed to update user role." });
+        }
+      }
+    );
+
     // User Management Routes
 
     app.post("/add-user", async (req, res) => {
