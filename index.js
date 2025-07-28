@@ -248,11 +248,9 @@ async function run() {
             return res.status(404).send({ message: "Request not found." });
           }
           if (request.requesterEmail !== req.firebaseUser.email) {
-            return res
-              .status(403)
-              .send({
-                message: "Forbidden: Not authorized to update this request.",
-              });
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to update this request.",
+            });
           }
           const updateDoc = { $set: { status: status } };
           const result = await donationRequestCollection.updateOne(
@@ -265,6 +263,36 @@ async function run() {
           res
             .status(500)
             .send({ message: "Failed to update donation request status." });
+        }
+      }
+    );
+
+    // Delete a donation request
+    app.delete(
+      "/donation-requests/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const request = await donationRequestCollection.findOne(query);
+          if (!request) {
+            return res.status(404).send({ message: "Request not found." });
+          }
+          if (request.requesterEmail !== req.firebaseUser.email) {
+            return res
+              .status(403)
+              .send({
+                message: "Forbidden: Not authorized to delete this request.",
+              });
+          }
+          const result = await donationRequestCollection.deleteOne(query);
+          res.send(result);
+        } catch (error) {
+          console.error("Error deleting donation request:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to delete donation request." });
         }
       }
     );
