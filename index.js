@@ -105,21 +105,50 @@ async function run() {
     );
 
     // GET all users with optional status filtering
-    app.get("/get-users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-      try {
-        const status = req.query.status;
-        const query = {};
-        if (status && status !== "all") {
-          query.status = status;
+    app.get(
+      "/get-users",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const status = req.query.status;
+          const query = {};
+          if (status && status !== "all") {
+            query.status = status;
+          }
+          const users = await userCollection.find(query).toArray();
+          res.send(users);
+        } catch (error) {
+          console.error("Error fetching all users:", error);
+          res.status(500).send({ message: "Failed to fetch users." });
         }
-        const users = await userCollection.find(query).toArray();
-        res.send(users);
-      } catch (error) {
-        console.error("Error fetching all users:", error);
-        res.status(500).send({ message: "Failed to fetch users." });
       }
-    });
+    );
 
+    // PATCH to update a user's status (block/unblock)
+    app.patch(
+      "/update-users/status/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { status } = req.body;
+          if (!status || !["active", "blocked"].includes(status)) {
+            return res
+              .status(400)
+              .send({ message: "Invalid status provided." });
+          }
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = { $set: { status: status } };
+          const result = await userCollection.updateOne(query, updateDoc);
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating user status:", error);
+          res.status(500).send({ message: "Failed to update user status." });
+        }
+      }
+    );
 
     // User Management Routes
 
