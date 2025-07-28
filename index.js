@@ -74,6 +74,36 @@ async function run() {
       }
     };
 
+    // Admin Routes
+
+    // GET admin statistics for the dashboard
+    app.get(
+      "/admin-stats",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const totalUsers = await userCollection.countDocuments();
+
+          const totalRequests =
+            await donationRequestCollection.countDocuments();
+
+          const totalFunding = 0; // Using a static value for now, will update later after implementing the funding page
+
+          res.send({
+            totalUsers,
+            totalFunding,
+            totalRequests,
+          });
+        } catch (error) {
+          console.error("Error fetching admin stats:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to fetch admin statistics." });
+        }
+      }
+    );
+
     // User Management Routes
 
     app.post("/add-user", async (req, res) => {
