@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -204,22 +204,31 @@ async function run() {
       res.send(result);
     });
 
-    // Get the current donor's recent donation requests
+    // Get the current donor's donation requests with filtering and optional limit
     app.get(
       "/donation-requests/my-requests",
       verifyFirebaseToken,
       async (req, res) => {
         try {
           const requesterEmail = req.firebaseUser.email;
+          const status = req.query.status;
           const limit = parseInt(req.query.limit) || 0;
+
           const query = { requesterEmail: requesterEmail };
-          const sortOptions = { createdAt: -1 };
+
+          if (status && status !== "all") {
+            query.status = status;
+          }
+
+          const sortOptions = { createdAt: -1 }; // Sort by newest first
           const cursor = donationRequestCollection
             .find(query)
             .sort(sortOptions);
+
           if (limit > 0) {
             cursor.limit(limit);
           }
+
           const requests = await cursor.toArray();
           res.send(requests);
         } catch (error) {
@@ -280,11 +289,9 @@ async function run() {
             return res.status(404).send({ message: "Request not found." });
           }
           if (request.requesterEmail !== req.firebaseUser.email) {
-            return res
-              .status(403)
-              .send({
-                message: "Forbidden: Not authorized to delete this request.",
-              });
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to delete this request.",
+            });
           }
           const result = await donationRequestCollection.deleteOne(query);
           res.send(result);
