@@ -104,6 +104,23 @@ async function run() {
       }
     );
 
+    // GET all users with optional status filtering
+    app.get("/get-users", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+      try {
+        const status = req.query.status;
+        const query = {};
+        if (status && status !== "all") {
+          query.status = status;
+        }
+        const users = await userCollection.find(query).toArray();
+        res.send(users);
+      } catch (error) {
+        console.error("Error fetching all users:", error);
+        res.status(500).send({ message: "Failed to fetch users." });
+      }
+    });
+
+
     // User Management Routes
 
     app.post("/add-user", async (req, res) => {
@@ -164,35 +181,6 @@ async function run() {
       });
       res.send({ msg: "ok", role: user.role, status: "active" });
     });
-
-    app.get(
-      "/get-users",
-      verifyFirebaseToken,
-      verifyAdmin,
-      async (req, res) => {
-        const users = await userCollection
-          .find({ email: { $ne: req.firebaseUser.email } })
-          .toArray();
-        res.send(users);
-      }
-    );
-
-    app.patch(
-      "/update-role",
-      verifyFirebaseToken,
-      verifyAdmin,
-      async (req, res) => {
-        const { email, role } = req.body;
-        const result = await userCollection.updateOne(
-          { email: email },
-          {
-            $set: { role },
-          }
-        );
-
-        res.send(result);
-      }
-    );
 
     // GET a single user's full profile by email
     app.get("/users/:email", verifyFirebaseToken, async (req, res) => {
