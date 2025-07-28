@@ -58,6 +58,9 @@ async function run() {
 
     const bloodCollection = client.db("bloodDB").collection("bloodConnect");
     const userCollection = client.db("bloodDB").collection("users");
+    const donationRequestCollection = client
+      .db("bloodDB")
+      .collection("donationRequests");
 
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
@@ -200,6 +203,33 @@ async function run() {
 
       res.send(result);
     });
+
+    // Get the current donor's recent donation requests
+    app.get(
+      "/donation-requests/my-requests",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const requesterEmail = req.firebaseUser.email;
+          const limit = parseInt(req.query.limit) || 0;
+          const query = { requesterEmail: requesterEmail };
+          const sortOptions = { createdAt: -1 };
+          const cursor = donationRequestCollection
+            .find(query)
+            .sort(sortOptions);
+          if (limit > 0) {
+            cursor.limit(limit);
+          }
+          const requests = await cursor.toArray();
+          res.send(requests);
+        } catch (error) {
+          console.error("Error fetching my donation requests:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to fetch donation requests." });
+        }
+      }
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
