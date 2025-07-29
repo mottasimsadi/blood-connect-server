@@ -652,6 +652,30 @@ async function run() {
       }
     });
 
+    // Get a single blog by its ID (for the edit page)
+    app.get(
+      "/blogs/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: "Invalid blog ID format." });
+          }
+          const query = { _id: new ObjectId(id) };
+          const blog = await blogCollection.findOne(query);
+          if (!blog) {
+            return res.status(404).send({ message: "Blog not found." });
+          }
+          res.send(blog);
+        } catch (error) {
+          console.error("Error fetching single blog:", error);
+          res.status(500).send({ message: "Failed to fetch blog post." });
+        }
+      }
+    );
+
     // GET a single blog post by its ID for the details page
     app.get("/blogs/:id", async (req, res) => {
       try {
