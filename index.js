@@ -629,6 +629,28 @@ async function run() {
         }
       }
     );
+    // GET all Published blog posts for the public blog page
+    app.get("/blogs/published", async (req, res) => {
+      try {
+        const query = { status: "published" };
+        const sortOptions = { createdAt: -1 }; // Show newest first
+
+        const blogs = await blogCollection
+          .find(query)
+          .sort(sortOptions)
+          .project({
+            title: 1,
+            thumbnail: 1,
+            createdAt: 1,
+          })
+          .toArray();
+
+        res.send(blogs);
+      } catch (error) {
+        console.error("Error fetching published blogs:", error);
+        res.status(500).send({ message: "Failed to fetch blogs." });
+      }
+    });
 
     // PATCH to update a blog's status (publish/unpublish)
     app.patch(
