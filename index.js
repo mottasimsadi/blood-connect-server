@@ -482,6 +482,31 @@ async function run() {
       }
     });
 
+    // PATCH to update a blog's status (publish/unpublish)
+    app.patch(
+      "/blogs/status/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { status } = req.body;
+          if (!status || !["draft", "published"].includes(status)) {
+            return res
+              .status(400)
+              .send({ message: "Invalid status provided." });
+          }
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = { $set: { status: status } };
+          const result = await blogCollection.updateOne(query, updateDoc);
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating blog status:", error);
+          res.status(500).send({ message: "Failed to update blog status." });
+        }
+      }
+    );
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
