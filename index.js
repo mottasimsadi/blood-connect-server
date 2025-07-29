@@ -130,6 +130,32 @@ async function run() {
       }
     });
 
+    // GET all Pending donation requests for the public page
+    app.get("/donation-requests/pending", async (req, res) => {
+      try {
+        const query = { status: "pending" };
+
+        const pendingRequests = await donationRequestCollection
+          .find(query)
+          .project({
+            recipientName: 1,
+            recipientDistrict: 1,
+            recipientUpazila: 1,
+            bloodGroup: 1,
+            donationDate: 1,
+            donationTime: 1,
+          })
+          .toArray();
+
+        res.send(pendingRequests);
+      } catch (error) {
+        console.error("Error fetching pending donation requests:", error);
+        res
+          .status(500)
+          .send({ message: "An error occurred while fetching requests." });
+      }
+    });
+
     // Admin Routes
 
     // GET admin statistics for the dashboard
