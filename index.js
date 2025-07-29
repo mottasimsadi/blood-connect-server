@@ -408,6 +408,42 @@ async function run() {
       }
     );
 
+    // Delete any request (if owner OR admin)
+    app.delete(
+      "/donation-requests/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const request = await donationRequestCollection.findOne(query);
+          if (!request) {
+            return res.status(404).send({ message: "Request not found." });
+          }
+
+          const requester = await userCollection.findOne({
+            email: req.firebaseUser.email,
+          });
+
+          if (
+            request.requesterEmail !== req.firebaseUser.email &&
+            requester?.role !== "admin"
+          ) {
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to delete this request.",
+            });
+          }
+
+          const result = await donationRequestCollection.deleteOne(query);
+          res.send(result);
+        } catch (error) {
+          console.error("Error deleting donation request:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to delete donation request." });
+        }
+      }
+    );
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
