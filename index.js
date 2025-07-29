@@ -87,6 +87,49 @@ async function run() {
       }
     };
 
+    // Public Routes
+
+    // GET to search for available donors
+    app.get("/search-donors", async (req, res) => {
+      try {
+        const { bloodGroup, district, upazila } = req.query;
+
+        const query = {
+          status: "active",
+          role: "donor",
+        };
+
+        if (bloodGroup) {
+          query.bloodGroup = bloodGroup;
+        }
+        if (district) {
+          query.district = district;
+        }
+        if (upazila) {
+          query.upazila = upazila;
+        }
+
+        const donors = await userCollection
+          .find(query)
+          .project({
+            name: 1,
+            email: 1,
+            bloodGroup: 1,
+            district: 1,
+            upazila: 1,
+            photoURL: 1,
+          })
+          .toArray();
+
+        res.send(donors);
+      } catch (error) {
+        console.error("Error searching for donors:", error);
+        res
+          .status(500)
+          .send({ message: "An error occurred while searching for donors." });
+      }
+    });
+
     // Admin Routes
 
     // GET admin statistics for the dashboard
