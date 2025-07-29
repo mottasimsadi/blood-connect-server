@@ -492,9 +492,13 @@ async function run() {
       async (req, res) => {
         try {
           const id = req.params.id;
-          const { status } = req.body;
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: "Invalid ID format." });
+          }
 
+          const updateData = req.body;
           const query = { _id: new ObjectId(id) };
+
           const request = await donationRequestCollection.findOne(query);
           if (!request) {
             return res.status(404).send({ message: "Request not found." });
@@ -504,25 +508,43 @@ async function run() {
             email: req.firebaseUser.email,
           });
 
-          if (
-            request.requesterEmail !== req.firebaseUser.email &&
-            requester?.role !== "admin" &&
-            requester?.role !== "volunteer"
-          ) {
-            return res.status(403).send({
-              message: "Forbidden: Not authorized to update this request.",
-            });
+          const isStatusOnlyUpdate =
+            Object.keys(updateData).length === 1 && updateData.status;
+
+          if (isStatusOnlyUpdate) {
+            if (
+              request.requesterEmail !== req.firebaseUser.email &&
+              requester?.role !== "admin" &&
+              requester?.role !== "volunteer"
+            ) {
+              return res
+                .status(403)
+                .send({
+                  message: "Forbidden: Not authorized to update status.",
+                });
+            }
+          } else {
+            if (
+              request.requesterEmail !== req.firebaseUser.email &&
+              requester?.role !== "admin"
+            ) {
+              return res
+                .status(403)
+                .send({
+                  message: "Forbidden: Not authorized to edit this request.",
+                });
+            }
           }
 
-          const updateDoc = { $set: { status: status } };
+          const updateDoc = { $set: updateData };
           const result = await donationRequestCollection.updateOne(
             query,
             updateDoc
           );
           res.send(result);
         } catch (error) {
-          console.error("Error updating donation request status:", error);
-          res.status(500).send({ message: "Failed to update status." });
+          console.error("Error updating donation request:", error);
+          res.status(500).send({ message: "Failed to update request." });
         }
       }
     );
