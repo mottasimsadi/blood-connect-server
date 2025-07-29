@@ -652,6 +652,29 @@ async function run() {
       }
     });
 
+    // GET a single blog post by its ID for the details page
+    app.get("/blogs/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid blog ID format." });
+        }
+        const query = { _id: new ObjectId(id) };
+
+        const blog = await blogCollection.findOne(query);
+
+        if (!blog || blog.status !== "published") {
+          return res
+            .status(404)
+            .send({ message: "Blog not found or is not published." });
+        }
+        res.send(blog);
+      } catch (error) {
+        console.error("Error fetching single blog post:", error);
+        res.status(500).send({ message: "Failed to fetch blog post." });
+      }
+    });
+
     // PATCH to update a blog's status (publish/unpublish)
     app.patch(
       "/blogs/status/:id",
