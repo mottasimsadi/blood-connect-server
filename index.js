@@ -452,41 +452,51 @@ async function run() {
       }
     );
 
-    // Blog Content Management Route (Admin Only)
+    // Blog Content Management Route (Admin & Volunteer Only)
 
-    // POST a new blog post
-    app.post("/blogs", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-      try {
-        const newBlog = req.body;
-        newBlog.status = "draft";
-        newBlog.createdAt = new Date();
-        const result = await blogCollection.insertOne(newBlog);
-        res.status(201).send(result);
-      } catch (error) {
-        console.error("Error creating blog post:", error);
-        res.status(500).send({ message: "Failed to create blog post." });
-      }
-    });
-
-    // GET all blog posts with status filtering
-    app.get("/blogs", verifyFirebaseToken, verifyAdmin, async (req, res) => {
-      try {
-        const status = req.query.status;
-        const query = {};
-        if (status && status !== "all") {
-          query.status = status;
+    // POST a new blog post (Allow both Admins and Volunteers to POST blogs)
+    app.post(
+      "/blogs",
+      verifyFirebaseToken,
+      verifyAdminOrVolunteer,
+      async (req, res) => {
+        try {
+          const newBlog = req.body;
+          newBlog.status = "draft";
+          newBlog.createdAt = new Date();
+          const result = await blogCollection.insertOne(newBlog);
+          res.status(201).send(result);
+        } catch (error) {
+          console.error("Error creating blog post:", error);
+          res.status(500).send({ message: "Failed to create blog post." });
         }
-        const sortOptions = { createdAt: -1 }; // Show newest first
-        const blogs = await blogCollection
-          .find(query)
-          .sort(sortOptions)
-          .toArray();
-        res.send(blogs);
-      } catch (error) {
-        console.error("Error fetching blogs:", error);
-        res.status(500).send({ message: "Failed to fetch blog posts." });
       }
-    });
+    );
+
+    // GET all blog posts with status filtering (Allow both Admins and Volunteers to GET blogs)
+    app.get(
+      "/blogs",
+      verifyFirebaseToken,
+      verifyAdminOrVolunteer,
+      async (req, res) => {
+        try {
+          const status = req.query.status;
+          const query = {};
+          if (status && status !== "all") {
+            query.status = status;
+          }
+          const sortOptions = { createdAt: -1 }; // Show newest first
+          const blogs = await blogCollection
+            .find(query)
+            .sort(sortOptions)
+            .toArray();
+          res.send(blogs);
+        } catch (error) {
+          console.error("Error fetching blogs:", error);
+          res.status(500).send({ message: "Failed to fetch blog posts." });
+        }
+      }
+    );
 
     // PATCH to update a blog's status (publish/unpublish)
     app.patch(
