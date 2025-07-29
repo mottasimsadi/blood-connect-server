@@ -156,69 +156,6 @@ async function run() {
       }
     });
 
-    // Get a single, detailed donation request by its ID
-    app.get("/donation-requests/:id", verifyFirebaseToken, async (req, res) => {
-      try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const request = await donationRequestCollection.findOne(query);
-
-        if (!request) {
-          return res.status(404).send({ message: "Request not found." });
-        }
-        res.send(request);
-      } catch (error) {
-        console.error("Error fetching single donation request:", error);
-        res.status(500).send({ message: "Failed to fetch request." });
-      }
-    });
-
-    // Confirm a donation (change status to 'inprogress' and add donor info)
-    app.patch(
-      "/donation-requests/confirm/:id",
-      verifyFirebaseToken,
-      async (req, res) => {
-        try {
-          const id = req.params.id;
-          const { donorName, donorEmail } = req.body;
-
-          const query = { _id: new ObjectId(id) };
-          const request = await donationRequestCollection.findOne(query);
-
-          if (!request) {
-            return res.status(404).send({ message: "Request not found." });
-          }
-          if (request.status !== "pending") {
-            return res
-              .status(400)
-              .send({ message: `This request is already ${request.status}.` });
-          }
-          if (request.requesterEmail === req.firebaseUser.email) {
-            return res
-              .status(403)
-              .send({ message: "You cannot donate to your own request." });
-          }
-
-          const updateDoc = {
-            $set: {
-              status: "inprogress",
-              donorName: donorName,
-              donorEmail: donorEmail,
-            },
-          };
-
-          const result = await donationRequestCollection.updateOne(
-            query,
-            updateDoc
-          );
-          res.send(result);
-        } catch (error) {
-          console.error("Error confirming donation:", error);
-          res.status(500).send({ message: "Failed to confirm donation." });
-        }
-      }
-    );
-
     // Admin Routes
 
     // GET admin statistics for the dashboard
@@ -449,28 +386,6 @@ async function run() {
       }
     );
 
-    // POST to create a donation request
-    app.post("/donation-requests", verifyFirebaseToken, async (req, res) => {
-      try {
-        const user = await userCollection.findOne({
-          email: req.firebaseUser.email,
-        });
-        if (user?.status === "blocked") {
-          return res.status(403).send({
-            message:
-              "Access Denied: Blocked users cannot create donation requests.",
-          });
-        }
-
-        const newRequest = req.body;
-        const result = await donationRequestCollection.insertOne(newRequest);
-        res.status(201).send(result);
-      } catch (error) {
-        console.error("Error creating donation request:", error);
-        res.status(500).send({ message: "Failed to create donation request." });
-      }
-    });
-
     // Get the current donor's donation requests with filtering and optional limit
     app.get(
       "/donation-requests/my-requests",
@@ -503,6 +418,69 @@ async function run() {
           res
             .status(500)
             .send({ message: "Failed to fetch donation requests." });
+        }
+      }
+    );
+
+    // Get a single, detailed donation request by its ID
+    app.get("/donation-requests/:id", verifyFirebaseToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const request = await donationRequestCollection.findOne(query);
+
+        if (!request) {
+          return res.status(404).send({ message: "Request not found." });
+        }
+        res.send(request);
+      } catch (error) {
+        console.error("Error fetching single donation request:", error);
+        res.status(500).send({ message: "Failed to fetch request." });
+      }
+    });
+
+    // Confirm a donation (change status to 'inprogress' and add donor info)
+    app.patch(
+      "/donation-requests/confirm/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { donorName, donorEmail } = req.body;
+
+          const query = { _id: new ObjectId(id) };
+          const request = await donationRequestCollection.findOne(query);
+
+          if (!request) {
+            return res.status(404).send({ message: "Request not found." });
+          }
+          if (request.status !== "pending") {
+            return res
+              .status(400)
+              .send({ message: `This request is already ${request.status}.` });
+          }
+          if (request.requesterEmail === req.firebaseUser.email) {
+            return res
+              .status(403)
+              .send({ message: "You cannot donate to your own request." });
+          }
+
+          const updateDoc = {
+            $set: {
+              status: "inprogress",
+              donorName: donorName,
+              donorEmail: donorEmail,
+            },
+          };
+
+          const result = await donationRequestCollection.updateOne(
+            query,
+            updateDoc
+          );
+          res.send(result);
+        } catch (error) {
+          console.error("Error confirming donation:", error);
+          res.status(500).send({ message: "Failed to confirm donation." });
         }
       }
     );
@@ -583,6 +561,28 @@ async function run() {
         }
       }
     );
+
+    // POST to create a donation request
+    app.post("/donation-requests", verifyFirebaseToken, async (req, res) => {
+      try {
+        const user = await userCollection.findOne({
+          email: req.firebaseUser.email,
+        });
+        if (user?.status === "blocked") {
+          return res.status(403).send({
+            message:
+              "Access Denied: Blocked users cannot create donation requests.",
+          });
+        }
+
+        const newRequest = req.body;
+        const result = await donationRequestCollection.insertOne(newRequest);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating donation request:", error);
+        res.status(500).send({ message: "Failed to create donation request." });
+      }
+    });
 
     // Blog Content Management Route (Admin & Volunteer Only)
 
