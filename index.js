@@ -61,6 +61,7 @@ async function run() {
     const donationRequestCollection = client
       .db("bloodDB")
       .collection("donationRequests");
+    const blogCollection = client.db("bloodDB").collection("blogs");
 
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
@@ -444,6 +445,22 @@ async function run() {
         }
       }
     );
+
+    // Blog Content Management Route (Admin Only)
+
+    // POST a new blog post
+    app.post("/blogs", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+      try {
+        const newBlog = req.body;
+        newBlog.status = "draft";
+        newBlog.createdAt = new Date();
+        const result = await blogCollection.insertOne(newBlog);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error creating blog post:", error);
+        res.status(500).send({ message: "Failed to create blog post." });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
