@@ -75,13 +75,25 @@ async function run() {
       }
     };
 
+    // New middleware to allow admins and volunteers
+    const verifyAdminOrVolunteer = async (req, res, next) => {
+      const user = await userCollection.findOne({
+        email: req.firebaseUser.email,
+      });
+      if (user?.role === "admin" || user?.role === "volunteer") {
+        next();
+      } else {
+        res.status(403).send({ msg: "unauthorized" });
+      }
+    };
+
     // Admin Routes
 
     // GET admin statistics for the dashboard
     app.get(
       "/admin-stats",
       verifyFirebaseToken,
-      verifyAdmin,
+      verifyAdminOrVolunteer,
       async (req, res) => {
         try {
           const totalUsers = await userCollection.countDocuments();
