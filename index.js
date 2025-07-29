@@ -156,6 +156,24 @@ async function run() {
       }
     });
 
+    // Get a single, detailed donation request by its ID
+    app.get("/donation-requests/:id", verifyFirebaseToken, async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const request = await donationRequestCollection.findOne(query);
+
+        if (!request) {
+          return res.status(404).send({ message: "Request not found." });
+        }
+        res.send(request);
+      } catch (error) {
+        console.error("Error fetching single donation request:", error);
+        res.status(500).send({ message: "Failed to fetch request." });
+      }
+    });
+
+
     // Admin Routes
 
     // GET admin statistics for the dashboard
