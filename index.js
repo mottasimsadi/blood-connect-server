@@ -678,7 +678,7 @@ async function run() {
     app.get(
       "/blogs/:id",
       verifyFirebaseToken,
-      verifyAdmin,
+      verifyAdminOrVolunteer,
       async (req, res) => {
         try {
           const id = req.params.id;
@@ -725,7 +725,7 @@ async function run() {
     app.patch(
       "/blogs/:id",
       verifyFirebaseToken,
-      verifyAdmin,
+      verifyAdminOrVolunteer,
       async (req, res) => {
         try {
           const id = req.params.id;
