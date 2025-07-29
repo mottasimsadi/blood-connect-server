@@ -362,7 +362,52 @@ async function run() {
       }
     );
 
-    
+    // Update status of any request (if owner OR admin)
+    app.patch(
+      "/donation-requests/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { status } = req.body;
+          if (!status) {
+            return res.status(400).send({ message: "Status is required." });
+          }
+
+          const query = { _id: new ObjectId(id) };
+          const request = await donationRequestCollection.findOne(query);
+          if (!request) {
+            return res.status(404).send({ message: "Request not found." });
+          }
+
+          const requester = await userCollection.findOne({
+            email: req.firebaseUser.email,
+          });
+
+          if (
+            request.requesterEmail !== req.firebaseUser.email &&
+            requester?.role !== "admin"
+          ) {
+            return res.status(403).send({
+              message: "Forbidden: Not authorized to update this request.",
+            });
+          }
+
+          const updateDoc = { $set: { status: status } };
+          const result = await donationRequestCollection.updateOne(
+            query,
+            updateDoc
+          );
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating donation request status:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to update donation request status." });
+        }
+      }
+    );
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
