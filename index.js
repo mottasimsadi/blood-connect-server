@@ -112,7 +112,8 @@ async function run() {
       async (req, res) => {
         try {
           const status = req.query.status;
-          const query = {};
+          const query = { email: { $ne: req.firebaseUser.email } };
+
           if (status && status !== "all") {
             query.status = status;
           }
@@ -152,7 +153,7 @@ async function run() {
 
     // PATCH to update a user's role
     app.patch(
-      "/users/role/:id",
+      "/update-users/role/:id",
       verifyFirebaseToken,
       verifyAdmin,
       async (req, res) => {
@@ -278,6 +279,31 @@ async function run() {
 
     // Dontaion Request Routes
 
+    // Get ALL donation requests (for Admin), with filtering
+    app.get(
+      "/donation-requests",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const status = req.query.status;
+          const query = {};
+          if (status && status !== "all") {
+            query.status = status;
+          }
+          const sortOptions = { createdAt: -1 };
+          const requests = await donationRequestCollection
+            .find(query)
+            .sort(sortOptions)
+            .toArray();
+          res.send(requests);
+        } catch (error) {
+          console.error("Error fetching all donation requests:", error);
+          res.status(500).send({ message: "Failed to fetch requests." });
+        }
+      }
+    );
+
     // POST to create a donation request
     app.post("/donation-requests", verifyFirebaseToken, async (req, res) => {
       try {
@@ -336,69 +362,7 @@ async function run() {
       }
     );
 
-    // Update the status of a donation request
-    app.patch(
-      "/donation-requests/:id",
-      verifyFirebaseToken,
-      async (req, res) => {
-        try {
-          const id = req.params.id;
-          const { status } = req.body;
-          if (!status) {
-            return res.status(400).send({ message: "Status is required." });
-          }
-          const query = { _id: new ObjectId(id) };
-          const request = await donationRequestCollection.findOne(query);
-          if (!request) {
-            return res.status(404).send({ message: "Request not found." });
-          }
-          if (request.requesterEmail !== req.firebaseUser.email) {
-            return res.status(403).send({
-              message: "Forbidden: Not authorized to update this request.",
-            });
-          }
-          const updateDoc = { $set: { status: status } };
-          const result = await donationRequestCollection.updateOne(
-            query,
-            updateDoc
-          );
-          res.send(result);
-        } catch (error) {
-          console.error("Error updating donation request status:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to update donation request status." });
-        }
-      }
-    );
-
-    // Delete a donation request
-    app.delete(
-      "/donation-requests/:id",
-      verifyFirebaseToken,
-      async (req, res) => {
-        try {
-          const id = req.params.id;
-          const query = { _id: new ObjectId(id) };
-          const request = await donationRequestCollection.findOne(query);
-          if (!request) {
-            return res.status(404).send({ message: "Request not found." });
-          }
-          if (request.requesterEmail !== req.firebaseUser.email) {
-            return res.status(403).send({
-              message: "Forbidden: Not authorized to delete this request.",
-            });
-          }
-          const result = await donationRequestCollection.deleteOne(query);
-          res.send(result);
-        } catch (error) {
-          console.error("Error deleting donation request:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to delete donation request." });
-        }
-      }
-    );
+    
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
