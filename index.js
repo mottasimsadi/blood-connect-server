@@ -292,11 +292,11 @@ async function run() {
 
     // Dontaion Request Routes
 
-    // Get ALL donation requests (for Admin), with filtering
+    // Get ALL donation requests (for Admin and Volunteer), with filtering
     app.get(
       "/donation-requests",
       verifyFirebaseToken,
-      verifyAdmin,
+      verifyAdminOrVolunteer,
       async (req, res) => {
         try {
           const status = req.query.status;
@@ -375,7 +375,7 @@ async function run() {
       }
     );
 
-    // Update status of any request (if owner OR admin)
+    // Update status (Owner, Admin, Or Volunteer can do this)
     app.patch(
       "/donation-requests/:id",
       verifyFirebaseToken,
@@ -383,9 +383,6 @@ async function run() {
         try {
           const id = req.params.id;
           const { status } = req.body;
-          if (!status) {
-            return res.status(400).send({ message: "Status is required." });
-          }
 
           const query = { _id: new ObjectId(id) };
           const request = await donationRequestCollection.findOne(query);
@@ -399,7 +396,8 @@ async function run() {
 
           if (
             request.requesterEmail !== req.firebaseUser.email &&
-            requester?.role !== "admin"
+            requester?.role !== "admin" &&
+            requester?.role !== "volunteer"
           ) {
             return res.status(403).send({
               message: "Forbidden: Not authorized to update this request.",
@@ -414,14 +412,12 @@ async function run() {
           res.send(result);
         } catch (error) {
           console.error("Error updating donation request status:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to update donation request status." });
+          res.status(500).send({ message: "Failed to update status." });
         }
       }
     );
 
-    // Delete any request (if owner OR admin)
+    // Delete request (Owner Or Admin can do this. Volunteer cannot.)
     app.delete(
       "/donation-requests/:id",
       verifyFirebaseToken,
@@ -451,9 +447,7 @@ async function run() {
           res.send(result);
         } catch (error) {
           console.error("Error deleting donation request:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to delete donation request." });
+          res.status(500).send({ message: "Failed to delete request." });
         }
       }
     );
