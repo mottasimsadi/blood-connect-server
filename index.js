@@ -699,6 +699,35 @@ async function run() {
       }
     });
 
+    // Update a blog post
+    app.patch(
+      "/blogs/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          if (!ObjectId.isValid(id)) {
+            return res.status(400).send({ message: "Invalid blog ID format." });
+          }
+          const updatedData = req.body;
+          const query = { _id: new ObjectId(id) };
+          const updateDoc = {
+            $set: {
+              title: updatedData.title,
+              thumbnail: updatedData.thumbnail,
+              content: updatedData.content,
+            },
+          };
+          const result = await blogCollection.updateOne(query, updateDoc);
+          res.send(result);
+        } catch (error) {
+          console.error("Error updating blog post:", error);
+          res.status(500).send({ message: "Failed to update blog post." });
+        }
+      }
+    );
+
     // PATCH to update a blog's status (publish/unpublish)
     app.patch(
       "/blogs/status/:id",
