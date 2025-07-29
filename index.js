@@ -507,6 +507,24 @@ async function run() {
       }
     );
 
+    // DELETE a blog post
+    app.delete(
+      "/blogs/:id",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const result = await blogCollection.deleteOne(query);
+          res.send(result);
+        } catch (error) {
+          console.error("Error deleting blog post:", error);
+          res.status(500).send({ message: "Failed to delete blog post." });
+        }
+      }
+    );
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
