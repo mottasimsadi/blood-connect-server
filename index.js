@@ -462,6 +462,26 @@ async function run() {
       }
     });
 
+    // GET all blog posts with status filtering
+    app.get("/blogs", verifyFirebaseToken, verifyAdmin, async (req, res) => {
+      try {
+        const status = req.query.status;
+        const query = {};
+        if (status && status !== "all") {
+          query.status = status;
+        }
+        const sortOptions = { createdAt: -1 }; // Show newest first
+        const blogs = await blogCollection
+          .find(query)
+          .sort(sortOptions)
+          .toArray();
+        res.send(blogs);
+      } catch (error) {
+        console.error("Error fetching blogs:", error);
+        res.status(500).send({ message: "Failed to fetch blog posts." });
+      }
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
