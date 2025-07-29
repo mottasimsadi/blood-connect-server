@@ -173,6 +173,51 @@ async function run() {
       }
     });
 
+    // Confirm a donation (change status to 'inprogress' and add donor info)
+    app.patch(
+      "/donation-requests/confirm/:id",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const { donorName, donorEmail } = req.body;
+
+          const query = { _id: new ObjectId(id) };
+          const request = await donationRequestCollection.findOne(query);
+
+          if (!request) {
+            return res.status(404).send({ message: "Request not found." });
+          }
+          if (request.status !== "pending") {
+            return res
+              .status(400)
+              .send({ message: `This request is already ${request.status}.` });
+          }
+          if (request.requesterEmail === req.firebaseUser.email) {
+            return res
+              .status(403)
+              .send({ message: "You cannot donate to your own request." });
+          }
+
+          const updateDoc = {
+            $set: {
+              status: "inprogress",
+              donorName: donorName,
+              donorEmail: donorEmail,
+            },
+          };
+
+          const result = await donationRequestCollection.updateOne(
+            query,
+            updateDoc
+          );
+          res.send(result);
+        } catch (error) {
+          console.error("Error confirming donation:", error);
+          res.status(500).send({ message: "Failed to confirm donation." });
+        }
+      }
+    );
 
     // Admin Routes
 
