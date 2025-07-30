@@ -676,7 +676,7 @@ async function run() {
 
     // Get a single blog by its ID (for the edit page)
     app.get(
-      "/blogs/:id",
+      "/blogs/private/:id",
       verifyFirebaseToken,
       verifyAdminOrVolunteer,
       async (req, res) => {
@@ -699,7 +699,7 @@ async function run() {
     );
 
     // GET a single blog post by its ID for the details page
-    app.get("/blogs/:id", async (req, res) => {
+    app.get("/blogs/public/:id", async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
