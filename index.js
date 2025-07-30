@@ -5,6 +5,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const dotenv = require("dotenv");
 dotenv.config();
 
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 const admin = require("firebase-admin");
 
 const serviceAccount = require("./admin-key.json");
@@ -56,12 +58,12 @@ async function run() {
     // Connect the client to the server
     await client.connect();
 
-    const bloodCollection = client.db("bloodDB").collection("bloodConnect");
     const userCollection = client.db("bloodDB").collection("users");
     const donationRequestCollection = client
       .db("bloodDB")
       .collection("donationRequests");
     const blogCollection = client.db("bloodDB").collection("blogs");
+    const fundingCollection = client.db("bloodDB").collection("funding");
 
     const verifyAdmin = async (req, res, next) => {
       const user = await userCollection.findOne({
@@ -166,17 +168,19 @@ async function run() {
       async (req, res) => {
         try {
           const totalUsers = await userCollection.countDocuments();
-
           const totalRequests =
             await donationRequestCollection.countDocuments();
 
-          const totalFunding = 0; // Using a static value for now, will update later after implementing the funding page
+          const fundingPipeline = [
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ];
+          const fundingResult = await fundingCollection
+            .aggregate(fundingPipeline)
+            .toArray();
+          const totalFunding =
+            fundingResult.length > 0 ? fundingResult[0].total : 0;
 
-          res.send({
-            totalUsers,
-            totalFunding,
-            totalRequests,
-          });
+          res.send({ totalUsers, totalFunding, totalRequests });
         } catch (error) {
           console.error("Error fetching admin stats:", error);
           res
@@ -517,22 +521,18 @@ async function run() {
               requester?.role !== "admin" &&
               requester?.role !== "volunteer"
             ) {
-              return res
-                .status(403)
-                .send({
-                  message: "Forbidden: Not authorized to update status.",
-                });
+              return res.status(403).send({
+                message: "Forbidden: Not authorized to update status.",
+              });
             }
           } else {
             if (
               request.requesterEmail !== req.firebaseUser.email &&
               requester?.role !== "admin"
             ) {
-              return res
-                .status(403)
-                .send({
-                  message: "Forbidden: Not authorized to edit this request.",
-                });
+              return res.status(403).send({
+                message: "Forbidden: Not authorized to edit this request.",
+              });
             }
           }
 
@@ -792,6 +792,63 @@ async function run() {
         }
       }
     );
+
+    // Funding & Payment Routes
+
+    // POST to create a Stripe Payment Intent
+    app.post(
+      "/create-payment-intent",
+      verifyFirebaseToken,
+      async (req, res) => {
+        try {
+          const { price } = req.body;
+          const amountInCents = Math.round(parseFloat(price) * 100);
+
+          if (isNaN(amountInCents) || amountInCents < 50) {
+            // Stripe minimum is $0.50
+            return res.status(400).send({ message: "Invalid amount." });
+          }
+
+          const paymentIntent = await stripe.paymentIntents.create({
+            amount: amountInCents,
+            currency: "usd",
+            payment_method_types: ["card"],
+          });
+          res.send({ clientSecret: paymentIntent.client_secret });
+        } catch (error) {
+          console.error("Error creating payment intent:", error);
+          res.status(500).send({ message: "Failed to create payment intent." });
+        }
+      }
+    );
+
+    // POST to save a successful funding transaction to the database
+    app.post("/funding", verifyFirebaseToken, async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+        paymentInfo.date = new Date(paymentInfo.date);
+        const result = await fundingCollection.insertOne(paymentInfo);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("Error saving funding info:", error);
+        res.status(500).send({ message: "Failed to save donation." });
+      }
+    });
+
+    // GET all funding transactions for the table view
+    app.get("/funding", verifyFirebaseToken, async (req, res) => {
+      try {
+        const sortOptions = { date: -1 }; // Show newest first
+        const funds = await fundingCollection
+          .find({})
+          .sort(sortOptions)
+          .toArray();
+        res.send(funds);
+      } catch (error) {
+        console.error("Error fetching funding data:", error);
+        res.status(500).send({ message: "Failed to fetch funding data." });
+      }
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
