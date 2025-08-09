@@ -74,7 +74,7 @@ To run this server locally, follow these steps:
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/Programming-Hero-Web-Course4/b11a12-server-side-mottasimsadi
+    git clone https://github.com/mottasimsadi/blood-connect-server
     cd blood-connect-server
     ```
 
