@@ -300,6 +300,7 @@ async function run() {
           // New user, insert the full document
           const newUser = {
             ...userData,
+            phoneNumber: userData.phoneNumber || "",
             status: "active",
             loginCount: 1,
           };
@@ -353,7 +354,16 @@ async function run() {
         });
       }
 
-      const updatedData = req.body;
+      const { name, photoURL, bloodGroup, district, upazila, phoneNumber } =
+        req.body;
+      const updatedData = {
+        name,
+        photoURL,
+        bloodGroup,
+        district,
+        upazila,
+        phoneNumber,
+      };
 
       const result = await userCollection.updateOne(
         { email: requestedEmail },
