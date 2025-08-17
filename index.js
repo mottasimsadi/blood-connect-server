@@ -190,27 +190,72 @@ async function run() {
       }
     );
 
-    // GET dashboard statistics for charts
+    // GET FULL dashboard statistics for charts and cards
     app.get(
       "/dashboard-stats",
       verifyFirebaseToken,
       verifyAdmin,
       async (req, res) => {
         try {
-          // Aggregation pipeline to count requests by blood group
+          // Basic Stats (Total Users, Total Requests)
+          const totalUsers = await userCollection.countDocuments();
+          const totalRequests =
+            await donationRequestCollection.countDocuments();
+
+          // Total Funding
+          const fundingPipeline = [
+            { $group: { _id: null, total: { $sum: "$amount" } } },
+          ];
+          const fundingResult = await fundingCollection
+            .aggregate(fundingPipeline)
+            .toArray();
+          const totalFunding =
+            fundingResult.length > 0 ? fundingResult[0].total : 0;
+
+          // Blood Type Distribution (for Pie Chart)
           const bloodTypeDistribution = await donationRequestCollection
             .aggregate([
               { $group: { _id: "$bloodGroup", count: { $sum: 1 } } },
-              { $project: { name: "$_id", value: "$count", _id: 0 } }, // Format for recharts
+              { $project: { name: "$_id", value: "$count", _id: 0 } },
               { $sort: { name: 1 } },
             ])
             .toArray();
 
+          // Donation Status Breakdown (for Bar Chart)
+          const statusDistribution = await donationRequestCollection
+            .aggregate([
+              { $group: { _id: "$status", count: { $sum: 1 } } },
+              { $project: { name: "$_id", count: "$count", _id: 0 } },
+            ])
+            .toArray();
+
+          // Monthly Donations (for Line Chart)
+          const monthlyDonations = await donationRequestCollection
+            .aggregate([
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: "%Y-%m", date: "$createdAt" },
+                  },
+                  count: { $sum: 1 },
+                },
+              },
+              { $project: { month: "$_id", count: "$count", _id: 0 } },
+              { $sort: { month: 1 } },
+            ])
+            .toArray();
+
+          // Combine all stats into a single response object
           res.send({
+            totalUsers,
+            totalRequests,
+            totalFunding,
             bloodTypeDistribution,
+            statusDistribution,
+            monthlyDonations,
           });
         } catch (error) {
-          console.error("Error fetching dashboard stats:", error);
+          console.error("Error fetching full dashboard stats:", error);
           res
             .status(500)
             .send({ message: "Failed to fetch dashboard statistics." });
