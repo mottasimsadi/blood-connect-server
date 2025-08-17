@@ -15,15 +15,16 @@ This repository contains the backend server for the BloodConnect application. It
 *   **Secure RESTful API:** Provides a complete set of endpoints for all CRUD (Create, Read, Update, Delete) operations.
 *   **JWT Authentication & Authorization:** Integrates with Firebase Admin SDK to verify JWTs on all private routes, ensuring secure access to data.
 *   **Role-Based Access Control (RBAC):** Implements custom middleware (`verifyAdmin`, `verifyAdminOrVolunteer`) to protect sensitive endpoints, ensuring that only users with the appropriate roles (admin, volunteer) can perform specific actions.
-*   **Dynamic Data Filtering & Pagination:** API endpoints support dynamic filtering (e.g., by status) and limiting results for features like pagination and dashboard summaries.
+*   **Dynamic Data Filtering:** API endpoints support dynamic filtering (e.g., by status) and limiting results for features like pagination and dashboard summaries.
 *   **Stripe Payment Integration:** Includes a dedicated endpoint for creating Stripe Payment Intents, enabling secure and reliable online donations.
-*   **Robust Security Measures:** Designed with security in mind, such as preventing users from modifying others' data, validating ObjectIDs to prevent crashes, and ensuring admins cannot remove their own privileges from the user list.
-*   **Data Aggregation:** Provides an endpoint for calculating and returning platform-wide statistics for the admin/volunteer dashboards.
+*   **Advanced Data Aggregation:** Utilizes MongoDB's aggregation pipeline to provide comprehensive statistics for the admin dashboard, including monthly donation trends, request status breakdowns, blood type distribution, and funding totals.
+*   **Robust Security Measures:** Designed with security in mind, such as preventing users from modifying others' data, validating ObjectIDs to prevent crashes, and ensuring admins cannot be managed through the public user list.
 
 ---
 
 ### 🛠️ Technology Stack
 
+*   **Runtime:** Node.js
 *   **Framework:** Express.js
 *   **Database:** MongoDB (with MongoDB Native Driver)
 *   **Authentication:** Firebase Admin SDK (for JWT verification)
@@ -41,10 +42,10 @@ Here is a summary of the primary API endpoints available:
 *   `GET /search-donors`: Searches for active donors based on query params (`bloodGroup`, `district`, `upazila`).
 *   `GET /donation-requests/pending`: Fetches all donation requests with a `pending` status.
 *   `GET /blogs/published`: Fetches all blog posts with a `published` status.
-*   `GET /blogs/:id` (Public Version): Fetches a single published blog post for public viewing.
+*   `GET /blogs/public/:id`: Fetches a single published blog post for public viewing.
 
 #### Authenticated Routes
-*   `POST /add-user`: Creates a new user in the database upon registration or first login.
+*   `POST /add-user`: Creates a new user in the database or updates login info.
 *   `GET /users/:email`: Fetches a user's full profile (protected).
 *   `PATCH /users/:email`: Allows a user to update their own profile.
 *   `POST /donation-requests`: Allows an active user to create a new donation request.
@@ -54,15 +55,16 @@ Here is a summary of the primary API endpoints available:
 *   `GET /funding`: Fetches the history of all funding donations.
 
 #### Admin & Volunteer Routes
-*   `GET /admin-stats`: (`admin`, `volunteer`) - Fetches platform-wide statistics.
+*   `GET /admin-stats`: (`admin`, `volunteer`) - Fetches basic platform-wide statistics (total users, funds, requests).
 *   `GET /donation-requests`: (`admin`, `volunteer`) - Fetches all donation requests with filtering.
 *   `GET /blogs`: (`admin`, `volunteer`) - Fetches all blogs with filtering.
 *   `POST /blogs`: (`admin`, `volunteer`) - Creates a new blog post as a draft.
 
 #### Admin-Only Routes
-*   `GET /users`: Fetches all users (except the admin themselves) with status filtering.
-*   `PATCH /users/status/:id`: Updates a user's status (active/blocked).
-*   `PATCH /users/role/:id`: Updates a user's role (donor/volunteer/admin).
+*   `GET /dashboard-stats`: Fetches a comprehensive set of aggregated data for all charts on the admin statistics page.
+*   `GET /get-users`: Fetches all users with status filtering.
+*   `PATCH /update-users/status/:id`: Updates a user's status (active/blocked).
+*   `PATCH /update-users/role/:id`: Updates a user's role (donor/volunteer/admin).
 *   `PATCH /blogs/status/:id`: Updates a blog's status (draft/published).
 *   `DELETE /blogs/:id`: Deletes a blog post.
 
