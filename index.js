@@ -190,6 +190,34 @@ async function run() {
       }
     );
 
+    // GET dashboard statistics for charts
+    app.get(
+      "/dashboard-stats",
+      verifyFirebaseToken,
+      verifyAdmin,
+      async (req, res) => {
+        try {
+          // Aggregation pipeline to count requests by blood group
+          const bloodTypeDistribution = await donationRequestCollection
+            .aggregate([
+              { $group: { _id: "$bloodGroup", count: { $sum: 1 } } },
+              { $project: { name: "$_id", value: "$count", _id: 0 } }, // Format for recharts
+              { $sort: { name: 1 } },
+            ])
+            .toArray();
+
+          res.send({
+            bloodTypeDistribution,
+          });
+        } catch (error) {
+          console.error("Error fetching dashboard stats:", error);
+          res
+            .status(500)
+            .send({ message: "Failed to fetch dashboard statistics." });
+        }
+      }
+    );
+
     // GET all users with optional status filtering
     app.get(
       "/get-users",
