@@ -196,64 +196,84 @@ async function run() {
       verifyFirebaseToken,
       verifyAdmin,
       async (req, res) => {
+        let totalUsers = 0;
+        let totalRequests = 0;
+        let totalFunding = 0;
+        let bloodTypeDistribution = [];
+        let statusDistribution = [];
+        let monthlyDonations = [];
+
         try {
-          // Basic Stats (Total Users, Total Requests)
-          const totalUsers = await userCollection.countDocuments();
-          const totalRequests =
-            await donationRequestCollection.countDocuments();
+          try {
+            totalUsers = await userCollection.countDocuments();
+            totalRequests = await donationRequestCollection.countDocuments();
+          } catch (error) {
+            console.error("Error fetching basic counts:", error);
+          }
 
-          // Total Funding
-          const fundingPipeline = [
-            {
-              $group: {
-                _id: null,
-                total: { $sum: { $ifNull: ["$amount", 0] } },
-              },
-            },
-          ];
-          const fundingResult = await fundingCollection
-            .aggregate(fundingPipeline)
-            .toArray();
-          const totalFunding =
-            fundingResult.length > 0 ? fundingResult[0].total : 0;
-
-          // Blood Type Distribution (for Pie Chart)
-          const bloodTypeDistribution = await donationRequestCollection
-            .aggregate([
-              { $group: { _id: "$bloodGroup", count: { $sum: 1 } } },
-              { $project: { name: "$_id", value: "$count", _id: 0 } },
-              { $sort: { name: 1 } },
-            ])
-            .toArray();
-
-          // Donation Status Breakdown (for Bar Chart)
-          const statusDistribution = await donationRequestCollection
-            .aggregate([
-              { $group: { _id: "$status", count: { $sum: 1 } } },
-              { $project: { name: "$_id", count: "$count", _id: 0 } },
-            ])
-            .toArray();
-
-          // Monthly Donations (for Line Chart)
-          const monthlyDonations = await donationRequestCollection
-            .aggregate([
+          try {
+            const fundingPipeline = [
               {
                 $group: {
-                  _id: {
-                    $dateToString: {
-                      format: "%Y-%m",
-                      date: { $ifNull: ["$createdAt", { $toDate: "$_id" }] },
-                    },
-                  },
-                  count: { $sum: 1 },
+                  _id: null,
+                  total: { $sum: { $ifNull: ["$amount", 0] } },
                 },
               },
-              { $project: { month: "$_id", count: "$count", _id: 0 } },
-              { $sort: { month: 1 } },
-            ])
-            .toArray();
+            ];
+            const fundingResult = await fundingCollection
+              .aggregate(fundingPipeline)
+              .toArray();
+            totalFunding =
+              fundingResult.length > 0 ? fundingResult[0].total : 0;
+          } catch (error) {
+            console.error("Error fetching funding stats:", error);
+          }
 
-          // Combine all stats into a single response object
+          try {
+            bloodTypeDistribution = await donationRequestCollection
+              .aggregate([
+                { $group: { _id: "$bloodGroup", count: { $sum: 1 } } },
+                { $project: { name: "$_id", value: "$count", _id: 0 } },
+                { $sort: { name: 1 } },
+              ])
+              .toArray();
+          } catch (error) {
+            console.error("Error fetching blood type distribution:", error);
+          }
+
+          try {
+            statusDistribution = await donationRequestCollection
+              .aggregate([
+                { $group: { _id: "$status", count: { $sum: 1 } } },
+                { $project: { name: "$_id", count: "$count", _id: 0 } },
+              ])
+              .toArray();
+          } catch (error) {
+            console.error("Error fetching status distribution:", error);
+          }
+
+          try {
+            monthlyDonations = await donationRequestCollection
+              .aggregate([
+                {
+                  $group: {
+                    _id: {
+                      $dateToString: {
+                        format: "%Y-%m",
+                        date: { $ifNull: ["$createdAt", { $toDate: "$_id" }] },
+                      },
+                    },
+                    count: { $sum: 1 },
+                  },
+                },
+                { $project: { month: "$_id", count: "$count", _id: 0 } },
+                { $sort: { month: 1 } },
+              ])
+              .toArray();
+          } catch (error) {
+            console.error("Error fetching monthly donations:", error);
+          }
+
           res.send({
             totalUsers,
             totalRequests,
@@ -263,10 +283,14 @@ async function run() {
             monthlyDonations,
           });
         } catch (error) {
-          console.error("Error fetching full dashboard stats:", error);
-          res
-            .status(500)
-            .send({ message: "Failed to fetch dashboard statistics." });
+          console.error(
+            "A critical error occurred in /dashboard-stats:",
+            error
+          );
+          res.status(500).send({
+            message:
+              "A critical error occurred while fetching dashboard statistics.",
+          });
         }
       }
     );
