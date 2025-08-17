@@ -204,7 +204,12 @@ async function run() {
 
           // Total Funding
           const fundingPipeline = [
-            { $group: { _id: null, total: { $sum: "$amount" } } },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: { $ifNull: ["$amount", 0] } },
+              },
+            },
           ];
           const fundingResult = await fundingCollection
             .aggregate(fundingPipeline)
