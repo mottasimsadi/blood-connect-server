@@ -235,7 +235,10 @@ async function run() {
               {
                 $group: {
                   _id: {
-                    $dateToString: { format: "%Y-%m", date: "$createdAt" },
+                    $dateToString: {
+                      format: "%Y-%m",
+                      date: { $ifNull: ["$createdAt", { $toDate: "$_id" }] },
+                    },
                   },
                   count: { $sum: 1 },
                 },
@@ -681,6 +684,8 @@ async function run() {
         }
 
         const newRequest = req.body;
+        newRequest.createdAt = new Date();
+
         const result = await donationRequestCollection.insertOne(newRequest);
         res.status(201).send(result);
       } catch (error) {
